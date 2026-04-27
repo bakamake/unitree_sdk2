@@ -29,9 +29,13 @@ enum test_mode
 };
 
 const int TEST_MODE = velocity_move;;
+const double STAND_UP_TIME = 3.0;  // 站起来需要的时间（秒）
 
 class Custom
 {
+private:
+  int current_mode = stand_up;  // Start with stand_up
+  double mode_switch_time = 2.0; // Switch to velocity_move after 2 seconds
 public:
   Custom()
   {
@@ -53,7 +57,23 @@ public:
     unitree::robot::go2::PathPoint path_point_tmp;
     std::vector<unitree::robot::go2::PathPoint> path;
 
-    switch (TEST_MODE)
+    // 状态机：先站起来，再执行测试模式
+    int current_mode = TEST_MODE;
+    if (ct < STAND_UP_TIME)
+    {
+      // 前3秒先执行站起来动作
+      current_mode = stand_up;
+      if (ct == 0)
+      {
+        std::cout << "开始站起来..." << std::endl;
+      }
+    }
+    else if (ct == STAND_UP_TIME)
+    {
+      std::cout << "站起完成，开始执行测试模式..." << std::endl;
+    }
+
+    switch (current_mode)
     {
     case normal_stand:            // 0. idle, default stand
       // sport_client.SwitchGait(0); // 0:idle; 1:tort; 2:tort running; 3:climb stair; 4:tort obstacle
@@ -75,7 +95,9 @@ public:
       break;
 
     case stand_up: // 5. position stand up
-      sport_client.StandUp();
+        sport_client.Euler(0.1, 0.2, 0.3); // 输入参数分别为roll, pitch, yaw角度
+        sport_client.BodyHeight(0.0);      // 机身的相对高度，0对应0.33m
+        sport_client.BalanceStand();       //平衡站立
       break;
 
     case damp: // 6. damping mode
@@ -110,6 +132,7 @@ public:
       sport_client.StopMove();
     }
   };
+
 
   // Get initial position
   void GetInitState()
